@@ -75,20 +75,20 @@ server <- function(input, output) {
     })
     
     data |> 
-      select(week, season_type, opp_logo, result, final_score, spread_line,
+      select(week, opp_logo, result, final_score, spread_line,
              team_rest, opponent_rest, dropback_epa, dropback_sr, rush_epa, 
              rush_sr, epa_per_play, sr) |> 
       gt() |> 
-      gt_merge_stack(week, season_type, 
+      gt_merge_stack(result, final_score, 
                      font_weight = c("bold", "normal")) |> 
-      cols_align(align = 'center', columns = c("opp_logo", "result")) |> 
-      cols_align(align = 'left', columns = c("final_score")) |> 
+      cols_align(align = 'center', columns = c("week")) |> 
+      cols_align(align = 'left', columns = c("final_score", "result")) |> 
+      cols_align(align = 'right', columns = c("opp_logo")) |> 
       fmt_percent(columns = c("sr", "dropback_sr", "rush_sr"), decimals = 1) |> 
       fmt_number(columns = c("dropback_epa", "rush_epa", "epa_per_play"), decimals = 2) |> 
       cols_label(week = "Wk.", 
-                 opp_logo = "Opponent", 
-                 result = "Result", 
-                 final_score = md("Final<br>Score"),
+                 opp_logo = "", 
+                 result = "Result",
                  spread_line = md("Spread"),
                  team_rest = md("Team<br>Rest"),
                  opponent_rest = md("Opp<br>Rest"),
@@ -113,6 +113,9 @@ server <- function(input, output) {
                        x <- gsub("W", "<span style=\"color: green;\">W</span>", x)
                        x <- gsub("L", "<span style=\"color: red;\">L</span>", x)
                      }) |> 
+      tab_style(
+        style = list(cell_text(weight = "bold")),
+        locations = cells_body(columns = week)) |> 
       tab_header(
         title = team_html()) |> 
       gt_theme_538()
