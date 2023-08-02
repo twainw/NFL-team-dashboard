@@ -42,11 +42,13 @@ teams_alt_logos <- readr::read_csv("https://raw.githubusercontent.com/bcongelio/
           # Data Prep #
 #--------------------------------------------------------
 
+pbp
+
 #--------------------------
 # By Week Summary
 #--------------------------
 
-calculate_adv_stats <- function(team_var, opp_var, type_var, pts_var){
+calculate_adv_stats <- function(team_var, opp_var, type_var){
   
   # Step: Build and return advanced stats df
   stats_df <- pbp |> 
@@ -54,11 +56,20 @@ calculate_adv_stats <- function(team_var, opp_var, type_var, pts_var){
     group_by(season, week, season_type, team = {{team_var}}, 
              opponent = {{opp_var}}, type = type_var) |> 
     summarize(epa_per_play = sum(epa) / n()
+              , passes = sum(pass)
+              , interceptions = sum(interception, na.rm = T)
+              , passing_yds = sum(passing_yards, na.rm = T)
               , dropback_epa = sum(epa*pass) / sum(pass)
               , dropback_sr = sum(success*pass) / sum(pass)
+              , rushes = sum(rush)
+              , lost_fumbles = sum(fumble_lost, na.rm = T)
+              , rushing_yds = sum(rushing_yards, na.rm = T)
               , rush_epa = sum(epa*rush) / sum(rush)
               , rush_sr = sum(success*rush) / sum(rush)
-              , sr = sum(success) / n()) |> 
+              , sr = sum(success) / n()
+              , tot_plays = sum(pass) + sum(rush)
+              , tot_yds = sum(passing_yards, na.rm = T) + sum(rushing_yards, na.rm = T)
+              , tot_tos = sum(interception, na.rm = T) + sum(fumble_lost, na.rm = T))|> 
     ungroup() |> 
     left_join(schedule |> 
                 select(season, team, week, team_score, opponent_score, team_rest, 
@@ -81,11 +92,57 @@ calculate_adv_stats <- function(team_var, opp_var, type_var, pts_var){
   return(stats_df)
 }
 
-off_stats_df <- calculate_adv_stats(posteam, defteam, "offense", team_score)
-def_stats_df <- calculate_adv_stats(defteam, posteam, "defense", opponent_score)
+off_stats_df <- calculate_adv_stats(posteam, defteam, "offense") |> 
+  group_by(season, week) |> 
+  mutate(across(c(epa_per_play, sr, dropback_epa, dropback_sr, 
+                  rush_epa, rush_sr)
+                , ~ rank(-.x, ties.method = 'min')
+                , .names = "{col}_rank")) |> 
+  ungroup()
 
+def_stats_df <- calculate_adv_stats(defteam, posteam, "defense") |> 
+  group_by(season, week) |> 
+  mutate(across(c(epa_per_play, sr, dropback_epa, dropback_sr, 
+                  rush_epa, rush_sr)
+                , ~ rank(.x, ties.method = 'min')
+                , .names = "{col}_rank")) |> 
+  ungroup()
 
+#--------------------------
+# Effectiveness Summary
+#--------------------------
 
+calculate_eff_summary <- function(team_var, type_var, pts_var){
+  
+  # Step: Build and return advanced stats df
+  stats_df <- pbp |> 
+    filter(!is.na(epa), !is.na({{team_var}}), pass == 1 | rush == 1) |> 
+    group_by(season, team = {{team_var}}, type = type_var) |> 
+    summarize(epa_per_play = sum(epa) / n()
+              , sr = sum(success) / n()
+              , dropback_epa = sum(epa*pass) / sum(pass)
+              , dropback_sr = sum(success*pass) / sum(pass)
+              , rush_epa = sum(epa*rush) / sum(rush)
+              , rush_sr = sum(success*rush) / sum(rush))|> 
+    ungroup() |> 
+    left_join(schedule |> 
+                group_by(season, team) |> 
+                summarize(pts = sum({{pts_var}})), 
+              by = c("season", "team"))
+  
+  # Step: return stats_df
+  return(stats_df)
+}
+
+off_eff_df <- calculate_eff_summary(posteam, "offense", team_score) |> 
+  mutate(across(c(epa_per_play:pts)
+                , ~ rank(-.x, ties.method = 'min')
+                , .names = "{col}_rank"))
+
+def_eff_df <- calculate_eff_summary(defteam, "defense", opponent_score) |> 
+  mutate(across(c(epa_per_play:pts)
+                , ~ rank(-.x, ties.method = 'min')
+                , .names = "{col}_rank"))
 
 
 
