@@ -11,36 +11,46 @@ library(shinyWidgets)
 # UI #
 #--------------------------------------------------------
 
+suppressWarnings({
+
 ui <- fluidPage(
   
-  #--------------------------
-  # Team Summary - epa by week
-  #--------------------------
+  # CSS tags to make verbatimTextOutput look nice
+  tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Chivo&display=swap"),
+    tags$style(HTML("
+      #explanation {
+        background-color: white;
+        font-family: 'Chivo', sans-serif;
+        font-size: 16px;
+      }
+    "))
+  ),
   
   # Theme
   
   theme = shinytheme("journal"),
   
-  selectInput("team", "Team:", 
-              choices = teams |> pull(team_abbr), 
-              selected = "SF",
-              width="120px"),
-  
-  sliderInput("week", "Week:",
-              (off_stats_df |> distinct(week) |> pull()), 
-              value = c(off_stats_df |> distinct(week) |> pull() |> min(), 
-                        off_stats_df |> distinct(week) |> pull() |> max()),
-              min = off_stats_df |> distinct(week) |> pull() |> min(),
-              max = off_stats_df |> distinct(week) |> pull() |> max()
-              ),
-  
   navbarPage("",
              tabPanel("Team Summary",
+                      selectInput("team", "Team:", 
+                                  choices = teams |> pull(team_abbr), 
+                                  selected = "SF",
+                                  width="120px"),
+                      sliderInput("week", "Week:",
+                                  (off_stats_df |> distinct(week) |> pull()), 
+                                  value = c(off_stats_df |> distinct(week) |> pull() |> min(), 
+                                            off_stats_df |> distinct(week) |> pull() |> max()),
+                                  min = off_stats_df |> distinct(week) |> pull() |> min(),
+                                  max = off_stats_df |> distinct(week) |> pull() |> max()
+                      ),
                       tabsetPanel(
                         tabPanel("Offense", tableOutput("off_eff_summary"), gt_output("off_epa_per_play_by_week")),
                         tabPanel("Defense", gt_output("def_eff_summary"), gt_output("def_epa_per_play_by_week"))
                       )),
-             tabPanel("MVP Tracker"),
+             tabPanel("QB MVP Tracker", gt_output("mvp_race"), gt_output("coeff"), 
+                      h3("Explanation of Coefficients"),
+                      verbatimTextOutput("explanation")),
              tabPanel("QB Stats")
   )
 )
@@ -292,6 +302,27 @@ server <- function(input, output) {
   output$def_eff_summary <- render_gt({
     eff_table(def_eff_df)
   })
+  
+  #--------------------------
+  # MVP Race
+  #--------------------------
+  output$mvp_race <- render_gt({
+    get_gt_table(df_test, 2022)
+  })
+  
+  output$coeff <- render_gt({
+      m |> 
+      tbl_regression() |> 
+      as_gt() |> 
+      tab_header(title = md("**QB MVP Model Coefficients**")) |> 
+      gt_theme_538()
+  })
+  
+  output$explanation <- renderText({
+    "Note that coefficients are negative, which indicates having a low rank-value (i.e. 1,2,3) corresponds to a higher rank in that category than ones peers, 
+    which is associated with a higher probability of winning the NFL MVP. The negative coefficient of total_interceptions also makes sense, because it indicates 
+    throwing more interceptions is associated with a lower probability of winning the NFL MVP."
+  })
 }
 
 #--------------------------------------------------------
@@ -299,3 +330,5 @@ server <- function(input, output) {
 #--------------------------------------------------------
 
 shinyApp(ui = ui, server = server)
+
+})
