@@ -15,15 +15,13 @@ library(nflfastR)
 # Data
 #--------------------------
 
-season_yr <- 2022
-
 # Step: Load Teams
 
-teams <- load_teams() |> filter(!team_abbr %in% c("LA", "OAK", "STL", "SD"))
+teams <- load_teams() |> filter(!team_abbr %in% c("LAR", "OAK", "STL", "SD"))
 
 # Step: Load play-by-play
 
-pbp <- load_pbp(seasons = season_yr)
+pbp <- load_participation(seasons = season_yr, include_pbp = T)
 
 # Step: Load Schedules
 
@@ -37,6 +35,11 @@ player_stats <- load_player_stats(seasons = season_yr)
 # Step: Brad's Alt Logos CSV
 
 teams_alt_logos <- readr::read_csv("https://raw.githubusercontent.com/bcongelio/nfl_alt_logos/main/team_alt_logos.csv")
+
+# Step: Season Standings
+
+season_standing <- standings |> 
+  filter(season == season_yr)
 
 #--------------------------------------------------------
           # Data Prep #

@@ -8,10 +8,15 @@ library(shinythemes)
 library(shinyWidgets)
 
 #--------------------------------------------------------
-# UI #
+# Source Programs and define macros #
 #--------------------------------------------------------
 
-suppressWarnings({
+season_yr <- 2022
+
+
+#--------------------------------------------------------
+# UI #
+#--------------------------------------------------------
 
 ui <- fluidPage(
   
@@ -45,7 +50,9 @@ ui <- fluidPage(
                                   max = off_stats_df |> distinct(week) |> pull() |> max()
                       ),
                       tabsetPanel(
-                        tabPanel("Offense", tableOutput("off_eff_summary"), gt_output("off_epa_per_play_by_week")),
+                        tabPanel("Offense",
+                                 tableOutput("off_eff_summary"), 
+                                 gt_output("off_epa_per_play_by_week")),
                         tabPanel("Defense", gt_output("def_eff_summary"), gt_output("def_epa_per_play_by_week"))
                       )),
              tabPanel("QB MVP Tracker", gt_output("mvp_race"), gt_output("coeff"), 
@@ -148,32 +155,6 @@ server <- function(input, output) {
                  epa_per_play = md("EPA/<br>Play"),
                  sr = md("Success<br>%")
       ) |> 
-      data_color(
-        columns = c(dropback_epa, rush_epa, epa_per_play),
-        colors = scales::col_numeric(
-          palette = paletteer::paletteer_c(
-            palette = "ggthemes::Orange-Blue Light Diverging",
-            n = 10,
-            direction = 1
-          ) |>  as.character(),
-          domain = c(-1, 1), 
-          reverse = reverse_arg,
-          na.color = "#00441BFF"
-        )
-      ) |> 
-      data_color(
-        columns = c(dropback_sr, rush_sr, sr),
-        colors = scales::col_numeric(
-          palette = paletteer::paletteer_c(
-            palette = "ggthemes::Orange-Blue Light Diverging",
-            n = 10,
-            direction = 1
-          ) |>  as.character(),
-          domain = c(0, 1), 
-          reverse = reverse_arg,
-          na.color = "#00441BFF"
-        )
-      ) |>
       tab_spanner(label = md("**Spread & Rest Time**"),
                   columns = spread_line:opponent_rest) |> 
       tab_spanner(label = md("**Passing**"),
@@ -242,6 +223,7 @@ server <- function(input, output) {
                     ~ ifelse(type == "offense", rank(-.x, ties.method = 'min'), rank(.x, ties.method = 'min')),
                     .names = "{col}_rank")) |> 
       filter(team == input$team) |> 
+      left_join(season_standing |> select(team, wins, losses, ties), by = "team") |> 
       select(season, team_logo, epa_per_play:last_col())
       
     data |> gt() |> 
@@ -278,7 +260,10 @@ server <- function(input, output) {
                  dropback_sr = md("Pass<br>Success%"),
                  rush_epa = md("Rush<br>EPA/Play"),
                  rush_sr = md("Rush<br>Success%"),
-                 pts = md("Pts")
+                 pts = md("Pts"),
+                 wins = md("Reg<br>Wins"),
+                 losses = md("Reg<br>Losses"),
+                 ties = md("Reg<br>ties")
       ) |> 
       tab_header(title = md("**Effectiveness Summary**"),
                  ) |>
@@ -306,8 +291,9 @@ server <- function(input, output) {
   #--------------------------
   # MVP Race
   #--------------------------
+  
   output$mvp_race <- render_gt({
-    get_gt_table(df_test, 2022)
+    get_gt_table(df_test, season_yr)
   })
   
   output$coeff <- render_gt({
@@ -330,5 +316,3 @@ server <- function(input, output) {
 #--------------------------------------------------------
 
 shinyApp(ui = ui, server = server)
-
-})
