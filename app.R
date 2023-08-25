@@ -6,6 +6,7 @@ library(gt)
 library(gtExtras)
 library(shinythemes)
 library(shinyWidgets)
+library(nflfastR)
 
 #--------------------------------------------------------
 # Source Programs and define macros #
