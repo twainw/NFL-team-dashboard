@@ -8,14 +8,14 @@ library(gtsummary)
 `%nin%` = Negate(`%in%`)
 
 #--------------------------------------------------------
-# Prepate Model Data #
+# Prepare Model Data #
 #--------------------------------------------------------
 
 #--------------------------
 # QB Player Stats
 #--------------------------
 
-player_stats <- nflreadr::load_player_stats(2000:2022) %>%
+player_stats <- nflreadr::load_player_stats(2000:season_yr) %>%
   filter(season_type == "REG" & position == "QB") %>%
   filter(season != 2000 & season != 2005 & season != 2006 & season != 2012) %>%
   group_by(season, team = recent_team, player_display_name, player_id) %>%
@@ -106,9 +106,9 @@ table(qb_mvp_stats_final$mvp)
 #--------------------------
 
 df_train <- qb_mvp_stats_final %>% 
-  filter(season >= 2003 & season <= 2016 & season %nin% c(2005, 2006, 2012))
+  filter(season >= 2003 & season <= 2018 & season %nin% c(2005, 2006, 2012))
 
-df_test <- qb_mvp_stats_final %>% filter(season >= 2017)
+df_test <- qb_mvp_stats_final %>% filter(season >= 2019)
 
 # Step: double check the training and testing sets
 
@@ -235,13 +235,7 @@ get_gt_table <- function(df, year, num_rows = 5) {
     gtExtras::gt_theme_538()
 }
 
-get_gt_table(df_test, 2022)
-get_gt_table(df_test, 2021)
-get_gt_table(df_test, 2020)
-get_gt_table(df_train, 2013)
-get_gt_table(df_train, 2003)
-get_gt_table(df_train, 2009)
-get_gt_table(df_train, 2015)
+get_gt_table(df_test, season_yr)
 
 coeffs <- m |> 
   tbl_regression() |> 
