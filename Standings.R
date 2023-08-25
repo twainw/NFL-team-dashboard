@@ -9,6 +9,7 @@
 library(tidyverse)
 library(gt)
 library(gtExtras)
+library(nflreadr)
 
 #--------------------------
 # Data
