@@ -236,6 +236,7 @@ get_gt_table <- function(df, year, num_rows = 5) {
 }
 
 get_gt_table(df_test, season_yr)
+m
 
 coeffs <- m |> 
   tbl_regression() |> 
