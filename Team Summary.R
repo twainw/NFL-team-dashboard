@@ -55,7 +55,7 @@ calculate_adv_stats <- function(team_var, opp_var, type_var){
   stats_df <- pbp |> 
     filter(!is.na(epa), !is.na({{team_var}}), pass == 1 | rush == 1) |> 
     mutate(explosive_pass = ifelse(pass == 1 & yards_gained >= 20, 1, 0),
-           explosive_run = ifelse(rush == 1 & yards_gained >= 15, 1, 0)) |> 
+           explosive_run = ifelse(rush == 1 & yards_gained >= 10, 1, 0)) |> 
     group_by(season, week, season_type, team = {{team_var}}, 
              opponent = {{opp_var}}, type = type_var) |> 
     summarize(epa_per_play = sum(epa) / n()
@@ -149,9 +149,6 @@ off_eff_df <- calculate_eff_summary(posteam, "offense", team_score)
 def_eff_df <- calculate_eff_summary(defteam, "defense", opponent_score)
 
 
-
-
-=======
 #--------------------------------------------------------
           # Preliminaries  #
 #--------------------------------------------------------
@@ -209,7 +206,7 @@ calculate_adv_stats <- function(team_var, opp_var, type_var){
   stats_df <- pbp |> 
     filter(!is.na(epa), !is.na({{team_var}}), pass == 1 | rush == 1) |> 
     mutate(explosive_pass = ifelse(pass == 1 & yards_gained >= 20, 1, 0),
-           explosive_run = ifelse(rush == 1 & yards_gained >= 15, 1, 0)) |> 
+           explosive_run = ifelse(rush == 1 & yards_gained >= 10, 1, 0)) |> 
     group_by(season, week, season_type, team = {{team_var}}, 
              opponent = {{opp_var}}, type = type_var) |> 
     summarize(epa_per_play = sum(epa) / n()
@@ -283,9 +280,11 @@ calculate_eff_summary <- function(team_var, type_var, pts_var){
               total_pass_epa = sum(epa*pass),
               total_passes = sum(pass),
               total_pass_success = sum(success*pass),
+              total_pass_explosive = sum(ifelse(pass == 1 & yards_gained >= 20, 1, 0), na.rm = T),
               total_rush_epa = sum(epa*rush),
               total_rushes = sum(rush),
-              total_rush_success = sum(success*rush)) |> 
+              total_rush_success = sum(success*rush),
+              total_rush_explosive = sum(ifelse(rush == 1 & yards_gained >= 10, 1, 0), na.rm = T)) |> 
     ungroup() |> 
     left_join(schedule |> 
                 group_by(season, team, week) |> 
@@ -302,7 +301,3 @@ calculate_eff_summary <- function(team_var, type_var, pts_var){
 off_eff_df <- calculate_eff_summary(posteam, "offense", team_score)
 def_eff_df <- calculate_eff_summary(defteam, "defense", opponent_score)
 
-
-
-
->>>>>>> 67a97fbdd8be7ecc31680068091ae590b76de60b

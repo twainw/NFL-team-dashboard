@@ -175,7 +175,7 @@ server <- function(input, output) {
         locations = cells_column_labels(columns = "dropback_explosive")
       ) |> 
       tab_footnote(
-        footnote = md("Passes where yards gained >= 15"),
+        footnote = md("Passes where yards gained >= 10"),
         locations = cells_column_labels(columns = "rush_explosive")
       ) |> 
       tab_footnote(
@@ -215,8 +215,10 @@ server <- function(input, output) {
                 sr = sum(total_success) / sum(total_plays), 
                 dropback_epa = sum(total_pass_epa) / sum(total_passes), 
                 dropback_sr = sum(total_pass_success) / sum(total_passes), 
+                dropback_exp = sum(total_pass_explosive) / sum(total_passes),
                 rush_epa = sum(total_rush_epa) / sum(total_rushes), 
                 rush_sr = sum(total_rush_success) / sum(total_rushes),
+                rush_exp = sum(total_rush_explosive) / sum(total_rushes),
                 pts = sum(pts)
       ) |> 
       ungroup() |> 
@@ -229,7 +231,7 @@ server <- function(input, output) {
       
     data |> gt() |> 
       fmt_number(columns = c("dropback_epa", "rush_epa", "epa_per_play"), decimals = 2) |> 
-      fmt_percent(columns = c("sr", "dropback_sr", "rush_sr"), decimals = 1) |> 
+      fmt_percent(columns = c("sr", "dropback_sr", "rush_sr", "dropback_exp", "rush_exp"), decimals = 1) |> 
       cols_align(align = 'center', columns = c("team_logo")) |> 
       gt_img_rows(team_logo, height = 35) |>
       gt_merge_stack(dropback_epa, dropback_epa_rank,
@@ -238,10 +240,16 @@ server <- function(input, output) {
       gt_merge_stack(dropback_sr, dropback_sr_rank,
                      font_weight = c("normal", "normal"),
                      palette = c("black", "black")) |>
+      gt_merge_stack(dropback_exp, dropback_exp_rank,
+                     font_weight = c("normal", "normal"),
+                     palette = c("black", "black")) |>
       gt_merge_stack(rush_epa, rush_epa_rank,
                      font_weight = c("normal", "normal"),
                      palette = c("black", "black")) |>
       gt_merge_stack(rush_sr, rush_sr_rank,
+                     font_weight = c("normal", "normal"),
+                     palette = c("black", "black")) |>
+      gt_merge_stack(rush_exp, rush_exp_rank,
                      font_weight = c("normal", "normal"),
                      palette = c("black", "black")) |>
       gt_merge_stack(epa_per_play, epa_per_play_rank,
@@ -259,8 +267,10 @@ server <- function(input, output) {
                  sr = md("Overall<br>Success%"),
                  dropback_epa = md("Pass<br>EPA/Play"),
                  dropback_sr = md("Pass<br>Success%"),
+                 dropback_exp = md("Pass<br>Explosive%"),
                  rush_epa = md("Rush<br>EPA/Play"),
                  rush_sr = md("Rush<br>Success%"),
+                 rush_exp = md("Rush<br>Explosive%"),
                  pts = md("Pts"),
                  wins = md("Reg<br>Wins"),
                  losses = md("Reg<br>Losses"),
