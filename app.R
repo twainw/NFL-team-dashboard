@@ -38,11 +38,12 @@ ui <- fluidPage(
   theme = shinytheme("journal"),
   
   navbarPage("",
-             tabPanel("Team Summary",
+             tabPanel("Offense",
                       selectInput("team", "Team:", 
                                   choices = teams |> pull(team_abbr), 
                                   selected = "SF",
                                   width="120px"),
+                      
                       sliderInput("week", "Week:",
                                   (off_stats_df |> distinct(week) |> pull()), 
                                   value = c(off_stats_df |> distinct(week) |> pull() |> min(), 
@@ -51,15 +52,34 @@ ui <- fluidPage(
                                   max = off_stats_df |> distinct(week) |> pull() |> max()
                       ),
                       tabsetPanel(
-                        tabPanel("Offense",
-                                 tableOutput("off_eff_summary"), 
-                                 gt_output("off_epa_per_play_by_week")),
-                        tabPanel("Defense", gt_output("def_eff_summary"), gt_output("def_epa_per_play_by_week"))
+                        tabPanel("Offensive Summary",
+                                 gt_output("off_eff_summary"), 
+                                 gt_output("off_epa_per_play_by_week"))
                       )),
+             
+             tabPanel("Defense",
+                      selectInput("team", "Team:", 
+                                  choices = teams |> pull(team_abbr), 
+                                  selected = "SF",
+                                  width="120px"),
+                      
+                      sliderInput("week", "Week:",
+                                  (off_stats_df |> distinct(week) |> pull()), 
+                                  value = c(off_stats_df |> distinct(week) |> pull() |> min(), 
+                                            off_stats_df |> distinct(week) |> pull() |> max()),
+                                  min = off_stats_df |> distinct(week) |> pull() |> min(),
+                                  max = off_stats_df |> distinct(week) |> pull() |> max()
+                      ),
+                      tabsetPanel(
+                        tabPanel("Defensive Summary", 
+                                 gt_output("def_eff_summary"), 
+                                 gt_output("def_epa_per_play_by_week"))
+                        
+                      )),
+             
              tabPanel("QB MVP Tracker", gt_output("mvp_race"), gt_output("coeff"), 
                       h3("Explanation of Coefficients"),
-                      verbatimTextOutput("explanation")),
-             tabPanel("QB Stats")
+                      verbatimTextOutput("explanation"))
   )
 )
 
