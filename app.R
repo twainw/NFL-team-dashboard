@@ -38,7 +38,7 @@ ui <- fluidPage(
   theme = shinytheme("journal"),
   
   navbarPage("",
-             tabPanel("Offense",
+             tabPanel("Team Summary",
                       selectInput("team", "Team:", 
                                   choices = teams |> pull(team_abbr), 
                                   selected = "SF",
@@ -52,36 +52,21 @@ ui <- fluidPage(
                                   max = off_stats_df |> distinct(week) |> pull() |> max()
                       ),
                       tabsetPanel(
-                        tabPanel("Offensive Summary",
+                        tabPanel("Offense",
                                  gt_output("off_eff_summary"), 
-                                 gt_output("off_epa_per_play_by_week"))
-                      )),
-             
-             tabPanel("Defense",
-                      selectInput("team", "Team:", 
-                                  choices = teams |> pull(team_abbr), 
-                                  selected = "SF",
-                                  width="120px"),
-                      
-                      sliderInput("week", "Week:",
-                                  (off_stats_df |> distinct(week) |> pull()), 
-                                  value = c(off_stats_df |> distinct(week) |> pull() |> min(), 
-                                            off_stats_df |> distinct(week) |> pull() |> max()),
-                                  min = off_stats_df |> distinct(week) |> pull() |> min(),
-                                  max = off_stats_df |> distinct(week) |> pull() |> max()
-                      ),
-                      tabsetPanel(
-                        tabPanel("Defensive Summary", 
+                                 gt_output("off_epa_per_play_by_week")),
+                        tabPanel("Defense", 
                                  gt_output("def_eff_summary"), 
-                                 gt_output("def_epa_per_play_by_week"))
-                        
+                                 gt_output("def_epa_per_play_by_week")),
+                        tabPanel("Receiving Waterfall",
+                                 gt_output("recv_table"))
                       )),
              
              tabPanel("QB MVP Tracker", gt_output("mvp_race"), gt_output("coeff"), 
                       h3("Explanation of Coefficients"),
                       verbatimTextOutput("explanation"))
-  )
-)
+  ))
+
 
 #--------------------------------------------------------
 # Server #
@@ -248,7 +233,7 @@ server <- function(input, output) {
       filter(team == input$team) |> 
       left_join(season_standing |> select(team, wins, losses, ties), by = "team") |> 
       select(season, team_logo, epa_per_play:last_col())
-      
+    
     data |> gt() |> 
       fmt_number(columns = c("dropback_epa", "rush_epa", "epa_per_play"), decimals = 2) |> 
       fmt_percent(columns = c("sr", "dropback_sr", "rush_sr", "dropback_exp", "rush_exp"), decimals = 1) |> 
@@ -297,7 +282,7 @@ server <- function(input, output) {
                  ties = md("Reg<br>ties")
       ) |> 
       tab_header(title = md("**Effectiveness Summary**"),
-                 ) |>
+      ) |>
       tab_footnote(
         footnote = paste0("Subscripted Number: Rank in that category from Weeks ", 
                           input$week[1], "-", input$week[2]),
@@ -320,6 +305,53 @@ server <- function(input, output) {
   })
   
   #--------------------------
+  # Receiving Waterfall
+  #--------------------------
+  
+  recv_waterfall_table <- function(df){
+    
+    data <- df |> 
+      filter(posteam == input$team, week %in% input$week[1]:input$week[2])
+    
+    data |> 
+      group_by(headshot_url, player_display_name, position) |> 
+      summarize(targets = sum(targets), 
+                receptions = sum(receptions), 
+                catchable_contested = sum(catchable_contested), 
+                catchable_not_contested = sum(catchable_not_contested),
+                not_catchable = sum(not_catchable),
+                created_receptions = sum(created_receptions),
+                drops = sum(drops),
+                total_epa = sum(receiving_epa)
+      ) |> 
+      ungroup() |> 
+      mutate(epa_per_target = total_epa / targets) |> 
+      arrange(-targets) |> 
+      gt() |> 
+      fmt_number(columns = c("total_epa", "epa_per_target"), decimals = 2) |> 
+      gt_img_rows(headshot_url, height = 35) |> 
+      cols_label(
+        headshot_url = "",
+        player_display_name = "Player",
+        position = "Position", 
+        targets = "Targets", 
+        receptions = "Receptions",
+        catchable_contested = md("Catchable<br> but Contested"),
+        catchable_not_contested = md("Catchable<br> Not Contested"),
+        not_catchable = md("Not<br>Catchable"),
+        created_receptions = md("Created<br>Receptions"),
+        drops = "Drops",
+        total_epa = md("Total<br>EPA"),
+        epa_per_target = md("EPA/Target")
+      ) |> 
+      gt_theme_538()
+  }
+  
+  output$recv_table <- render_gt({
+    recv_waterfall_table(recv_df)
+  })
+  
+  #--------------------------
   # MVP Race
   #--------------------------
   
@@ -328,7 +360,7 @@ server <- function(input, output) {
   })
   
   output$coeff <- render_gt({
-      m |> 
+    m |> 
       tbl_regression() |> 
       as_gt() |> 
       tab_header(title = md("**QB MVP Model Coefficients**")) |> 
