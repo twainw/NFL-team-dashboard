@@ -12,8 +12,7 @@ library(nflfastR)
 # Source Programs and define macros #
 #--------------------------------------------------------
 
-season_yr <- 2022
-
+season_yr <- 2023
 
 #--------------------------------------------------------
 # UI #
@@ -38,7 +37,12 @@ ui <- fluidPage(
   theme = shinytheme("journal"),
   
   navbarPage("",
-             tabPanel("Team Summary",
+             
+             #--------------------------
+             # Offense Tab Panel
+             #--------------------------
+             
+             tabPanel("Offense",
                       selectInput("team", "Team:", 
                                   choices = teams |> pull(team_abbr), 
                                   selected = "SF",
@@ -52,15 +56,51 @@ ui <- fluidPage(
                                   max = off_stats_df |> distinct(week) |> pull() |> max()
                       ),
                       tabsetPanel(
-                        tabPanel("Offense",
+                        
+                        # Tab Panel: Offensive Summary
+                        tabPanel("Offensive Summary",
                                  gt_output("off_eff_summary"), 
                                  gt_output("off_epa_per_play_by_week")),
-                        tabPanel("Defense", 
-                                 gt_output("def_eff_summary"), 
-                                 gt_output("def_epa_per_play_by_week")),
+                        
+                        # Tab Panel: Waterfall
                         tabPanel("Receiving Waterfall",
-                                 gt_output("recv_table"))
+                                 gt_output("recv_table")),
+                        
+                        # Tab Panel: PVT 
+                        tabPanel("PVT",
+                                 textInput(inputId = "group_by_list",
+                                           label = "List Dimension/Dimensions",
+                                           value = "offense_personnel"),
+                                 gt_output("off_pvt_table")
+                        )
                       )),
+             
+             #--------------------------
+             # Defense Tab Panel
+             #--------------------------
+             
+             tabPanel("Defense",
+                      selectInput("def_team", "Team:", 
+                                  choices = teams |> pull(team_abbr), 
+                                  selected = "SF",
+                                  width="120px"),
+                      
+                      sliderInput("def_week", "Week:",
+                                  (def_stats_df |> distinct(week) |> pull()), 
+                                  value = c(def_stats_df |> distinct(week) |> pull() |> min(), 
+                                            def_stats_df |> distinct(week) |> pull() |> max()),
+                                  min = def_stats_df |> distinct(week) |> pull() |> min(),
+                                  max = def_stats_df |> distinct(week) |> pull() |> max()
+                      ),
+                      tabsetPanel(
+                        tabPanel("Defensive Summary",
+                                 gt_output("def_eff_summary"), 
+                                 gt_output("def_epa_per_play_by_week"))
+                      )),
+             
+             #--------------------------
+             # QB MVP Tracker Tab Panel
+             #--------------------------
              
              tabPanel("QB MVP Tracker", gt_output("mvp_race"), gt_output("coeff"), 
                       h3("Explanation of Coefficients"),
@@ -78,11 +118,11 @@ server <- function(input, output) {
   # Team Summary - epa by week
   #--------------------------
   
-  wk_table <- function(df, reverse_arg){
+  wk_table <- function(df, reverse_arg, team_input, week_input){
     
     data <- df |> 
-      filter(team == input$team,
-             week %in% input$week[1]:input$week[2])
+      filter(team == team_input,
+             week %in% week_input[1]:week_input[2])
     
     team_html <- reactive({
       md(
@@ -176,11 +216,11 @@ server <- function(input, output) {
                        x <- gsub("L", "<span style=\"color: red;\">L</span>", x)
                      }) |> 
       tab_footnote(
-        footnote = md("Passes where yards gained >= 20"),
+        footnote = md("Passing yards gained >= 20"),
         locations = cells_column_labels(columns = "dropback_explosive")
       ) |> 
       tab_footnote(
-        footnote = md("Passes where yards gained >= 10"),
+        footnote = md("Rush yards gained >= 10"),
         locations = cells_column_labels(columns = "rush_explosive")
       ) |> 
       tab_footnote(
@@ -191,30 +231,32 @@ server <- function(input, output) {
         style = list(cell_text(weight = "bold")),
         locations = cells_body(columns = week)) |> 
       tab_header(
-        title = team_html()) |> 
-      gt_theme_538()
+        title = md("**By Week Summary**"), 
+        subtitle = team_html()) |> 
+      gt_theme_538() |> 
+      opt_align_table_header(align = "center")
   }
   
   # Offense
   
   output$off_epa_per_play_by_week <- render_gt({
-    wk_table(off_stats_df, reverse_arg = "F")
+    wk_table(off_stats_df, reverse_arg = "F", input$team, input$week)
   })
   
   # Defense
   
   output$def_epa_per_play_by_week <- render_gt({
-    wk_table(def_stats_df, reverse_arg = "T")
+    wk_table(def_stats_df, reverse_arg = "T", input$def_team, input$def_week)
   })
   
   #--------------------------
   # Effectiveness Summary
   #--------------------------
   
-  eff_table <- function(df){
+  eff_table <- function(df, team_input, week_input){
     
     data <- df |> 
-      filter(week %in% input$week[1]:input$week[2]) |> 
+      filter(week %in% week_input[1]:week_input[2]) |> 
       group_by(season, team, type, team_logo) |> 
       summarize(epa_per_play = sum(total_epa) / sum(total_plays), 
                 sr = sum(total_success) / sum(total_plays), 
@@ -230,7 +272,7 @@ server <- function(input, output) {
       mutate(across(epa_per_play:pts,
                     ~ ifelse(type == "offense", rank(-.x, ties.method = 'min'), rank(.x, ties.method = 'min')),
                     .names = "{col}_rank")) |> 
-      filter(team == input$team) |> 
+      filter(team == team_input) |> 
       left_join(season_standing |> select(team, wins, losses, ties), by = "team") |> 
       select(season, team_logo, epa_per_play:last_col())
     
@@ -285,7 +327,7 @@ server <- function(input, output) {
       ) |>
       tab_footnote(
         footnote = paste0("Subscripted Number: Rank in that category from Weeks ", 
-                          input$week[1], "-", input$week[2]),
+                          input$week_input[1], "-", input$week_input[2]),
         locations = cells_column_labels(columns = "season")
       ) |> 
       gt_theme_538() |> 
@@ -295,23 +337,24 @@ server <- function(input, output) {
   # Offense
   
   output$off_eff_summary <- render_gt({
-    eff_table(off_eff_df)
+    eff_table(off_eff_df, input$team, input$week)
   })
   
   # Defense
   
   output$def_eff_summary <- render_gt({
-    eff_table(def_eff_df)
+    eff_table(def_eff_df, input$def_team, input$def_week)
   })
   
   #--------------------------
   # Receiving Waterfall
   #--------------------------
   
-  recv_waterfall_table <- function(df){
+  recv_waterfall_table <- function(df, team_input, week_input){
     
     data <- df |> 
-      filter(posteam == input$team, week %in% input$week[1]:input$week[2])
+      filter(posteam == team_input, 
+             week %in% week_input[1]:week_input[2])
     
     data |> 
       group_by(headshot_url, player_display_name, position) |> 
@@ -348,7 +391,7 @@ server <- function(input, output) {
   }
   
   output$recv_table <- render_gt({
-    recv_waterfall_table(recv_df)
+    recv_waterfall_table(recv_df, input$team, input$week)
   })
   
   #--------------------------
@@ -372,6 +415,95 @@ server <- function(input, output) {
     which is associated with a higher probability of winning the NFL MVP. The negative coefficient of total_interceptions also makes sense, because it indicates 
     throwing more interceptions is associated with a lower probability of winning the NFL MVP."
   })
+  
+  #--------------------------
+  # PVT
+  #--------------------------
+  
+  pvt_table <- function(team_input, week_input, group_by_list){
+    
+    # Step: Setup group_vars for the group_by function
+    
+    group_vars <- strsplit(group_by_list, ",")[[1]]
+    group_vars <- trimws(group_vars)
+    
+    # Step: Filter the data
+    
+    df <- pbp |> 
+      filter(!is.na(epa), !is.na(posteam), pass == 1 | rush == 1) |> 
+      mutate(explosive_pass = ifelse(pass == 1 & yards_gained >= 20, 1, 0),
+             explosive_run = ifelse(rush == 1 & yards_gained >= 10, 1, 0)) |>
+      drop_na(offense_formation)
+    
+    # Step: Create GT() table
+    
+    df |> 
+      filter(week %in% week_input[1]:week_input[2]) |> 
+      group_by(posteam, across(all_of(group_vars))) |> 
+      summarize(epa_per_play = sum(epa) / n()
+                , passes = sum(pass)
+                , passing_yds = sum(passing_yards, na.rm = T)
+                , dropback_epa = sum(epa*pass) / sum(pass)
+                , dropback_sr = sum(success*pass) / sum(pass)
+                , dropback_explosive = sum(explosive_pass, na.rm = T) / sum(pass)
+                , rushes = sum(rush)
+                , rushing_yds = sum(rushing_yards, na.rm = T)
+                , rush_epa = sum(epa*rush) / sum(rush)
+                , rush_sr = sum(success*rush) / sum(rush)
+                , rush_explosive = sum(explosive_run, na.rm = T) / sum(rush)
+                , sr = sum(success) / n()
+                , tot_plays = sum(pass) + sum(rush)
+                , tot_yds = sum(passing_yards, na.rm = T) + sum(rushing_yards, na.rm = T)) |> 
+      ungroup() |> 
+      mutate(across(everything(), ~replace(., is.nan(.), 0))) |> 
+      filter(posteam == team_input) |> 
+      select(all_of(group_vars), 
+             tot_plays, tot_yds, epa_per_play, sr,
+             passes, passing_yds, dropback_epa, dropback_sr, dropback_explosive,
+             rushes, rushing_yds, rush_epa, rush_sr, rush_explosive) |>
+      arrange(-tot_plays) |>  
+      gt() |> 
+      fmt_percent(columns = c("sr", "dropback_sr", "rush_sr", 
+                              "dropback_explosive", "rush_explosive"), 
+                  decimals = 1) |> 
+      fmt_number(columns = c("dropback_epa", "rush_epa", "epa_per_play"), decimals = 2) |> 
+      cols_label(passes = md("Passes"),
+                 passing_yds = md("Pass<br>Yds"),
+                 dropback_epa = md("EPA/<br>Play"),
+                 dropback_sr = md("Success<br>%"),
+                 dropback_explosive = md("Explosive<br>%"),
+                 rushes = md("Rushes"),
+                 rushing_yds = md("Rush<br>Yds"),
+                 rush_epa = md("EPA/<br>Play"),
+                 rush_sr = md("Success<br>%"),
+                 rush_explosive = md("Explosive<br>%"),
+                 tot_plays = md("Plays"),
+                 tot_yds = md("Yds"),
+                 epa_per_play = md("EPA/<br>Play"),
+                 sr = md("Success<br>%")
+      ) |> 
+      tab_spanner(label = md("**Passing**"),
+                  columns = passes:dropback_explosive) |> 
+      tab_spanner(label = md("**Rushing**"), 
+                  columns = rushes:rush_explosive) |> 
+      tab_spanner(label = md("**Total**"),
+                  columns = tot_plays:sr) |> 
+      tab_footnote(
+        footnote = md("Passing yards gained >= 20"),
+        locations = cells_column_labels(columns = "dropback_explosive")
+      ) |> 
+      tab_footnote(
+        footnote = md("Rush yards gained >= 10"),
+        locations = cells_column_labels(columns = "rush_explosive")
+      ) |> 
+      gt_theme_538() |> 
+      opt_align_table_header(align = "center")
+  }
+  
+  output$off_pvt_table <- render_gt({
+    pvt_table(input$team, input$week, input$group_by_list)
+  })
+
 }
 
 #--------------------------------------------------------

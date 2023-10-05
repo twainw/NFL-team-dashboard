@@ -104,45 +104,6 @@ recv_df <- pbp_w_charting |>
 recv_df |> 
   summarize(sum(targets_diff), sum(receptions_diff))
 
-# Step: Create a gt()
-
-recv_df |> 
-  filter(posteam == "input$team", week %in% input$week[1]:input$week[2]) |> 
-  group_by(headshot_url, player_display_name, position) |> 
-  summarize(targets = sum(targets), 
-            receptions = sum(receptions), 
-            catchable_contested = sum(catchable_contested), 
-            catchable_not_contested = sum(catchable_not_contested),
-            not_catchable = sum(not_catchable),
-            created_receptions = sum(created_receptions),
-            drops = sum(drops),
-            total_epa = sum(receiving_epa)
-            ) |> 
-  ungroup() |> 
-  mutate(epa_per_target = total_epa / targets) |> 
-  arrange(-targets) |> 
-  gt() |> 
-  fmt_number(columns = c("total_epa", "epa_per_target"), decimals = 2) |> 
-  gt_img_rows(headshot_url, height = 35) |> 
-  cols_label(
-    headshot_url = "",
-    player_display_name = "Player",
-    position = "Position", 
-    targets = "Targets", 
-    receptions = "Receptions",
-    catchable_contested = md("Catchable<br> but Contested"),
-    catchable_not_contested = md("Catchable<br> Not Contested"),
-    not_catchable = md("Not<br>Catchable"),
-    created_receptions = md("Created<br>Receptions"),
-    drops = "Drops",
-    total_epa = md("Total<br>EPA"),
-    epa_per_target = md("EPA/Target")
-  ) |> 
-  tab_header(title = md("**Receiving Waterfall**")) |> 
-  gt_theme_538()
-
-
-
 
 
 

@@ -26,9 +26,16 @@ player_stats <- nflreadr::load_player_stats(2000:season_yr) %>%
     total_tds = sum(passing_tds + rushing_tds, na.rm = TRUE),
     total_interceptions = sum(interceptions, na.rm = TRUE),
     mean_epa = mean(passing_epa, na.rm = TRUE)) %>%
-  filter(total_attempts >= 150) %>%
   ungroup() |> 
   filter(season >= 2003)
+
+player_stats_pre_2023 <- player_stats |> 
+  filter(total_attempts >= 150)
+
+player_stats_2023 <- player_stats |> 
+  filter(season == 2023)
+
+player_stats <- rbind(player_stats_pre_2023, player_stats_2023)
 
 #--------------------------
 # Standings
@@ -40,7 +47,6 @@ standings <- readr::read_csv("https://raw.githubusercontent.com/nflverse/nfldata
     team == 'SD' ~ 'LAC',
     team == 'STL' ~ 'LA',
     TRUE ~ team)) |> 
-  filter(season != 2023) |> 
   filter(season >= 2003)
 
 #--------------------------
@@ -106,9 +112,9 @@ table(qb_mvp_stats_final$mvp)
 #--------------------------
 
 df_train <- qb_mvp_stats_final %>% 
-  filter(season >= 2003 & season <= 2018 & season %nin% c(2005, 2006, 2012))
+  filter(season >= 2003 & season <= 2019 & season %nin% c(2005, 2006, 2012))
 
-df_test <- qb_mvp_stats_final %>% filter(season >= 2019)
+df_test <- qb_mvp_stats_final %>% filter(season >= 2020)
 
 # Step: double check the training and testing sets
 
@@ -186,7 +192,7 @@ df_test %>%
 
 # Step: Define columns to display in the gt() table
 
-cols_needed <- c("player_display_name", "mvp_prob", "pred_mvp", "mvp", 
+cols_needed <- c("player_display_name", "mvp_prob", "pred_mvp", 
                  "tds_rank", "yds_rank", "win_rank", "epa_rank", "total_interceptions")
 
 # Step: Create gt() table function
@@ -208,7 +214,7 @@ get_gt_table <- function(df, year, num_rows = 5) {
       player_display_name = "Name",
       mvp_prob = md("MVP<br>Prob"),
       pred_mvp = md("Predicted<br>MVP"),
-      mvp = md("Actual<br>MVP"),
+      # mvp = md("Actual<br>MVP"),
       tds_rank = md("Total<br>TDs<br>Rank"),
       yds_rank = md("Total<br>YDs<br>Rank"),
       win_rank = md("Total<br>WINs<br>Rank"),
@@ -236,7 +242,6 @@ get_gt_table <- function(df, year, num_rows = 5) {
 }
 
 get_gt_table(df_test, season_yr)
-m
 
 coeffs <- m |> 
   tbl_regression() |> 
