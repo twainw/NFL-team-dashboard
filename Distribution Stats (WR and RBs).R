@@ -27,12 +27,6 @@ snaps <- load_snap_counts(seasons = season_yr)
 # Data prep
 #--------------------------
 
-# Step: Join charting and pbp data
-
-pbp_w_charting <- pbp |> 
-  left_join(charting |> select(nflverse_game_id, nflverse_play_id, is_no_huddle:last_col()), 
-            by = c("nflverse_game_id", "play_id" = "nflverse_play_id"))
-
 # Step: QC target summary, by receiver and game, built from pbp w player stats
 # done, to compute accurate counts of charting stats
 
@@ -70,7 +64,7 @@ summary_from_pbp <- pbp_w_charting |>
 
 # Step: receiver charting summary
 
-recv_df <- pbp_w_charting |> 
+recv_df <- pbp |> 
   filter(!is.na(epa), !is.na(posteam), pass == 1, two_point_attempt != 1, play_type != 'no_play') |>
   filter(!is.na(receiver_player_id)) |> 
   group_by(posteam, week, receiver_player_id, receiver_player_name) |> 
@@ -80,7 +74,8 @@ recv_df <- pbp_w_charting |>
             catchable_not_contested = sum(is_catchable_ball * !is_contested_ball),
             not_catchable = sum(!is_catchable_ball),
             created_receptions = sum(is_created_reception),
-            drops = sum(is_drop)
+            drops = sum(is_drop),
+            total_epa = sum(epa)
             ) |> 
   ungroup() |> 
   left_join(player_stats |> 
@@ -89,7 +84,8 @@ recv_df <- pbp_w_charting |>
             by = c('receiver_player_id' = 'player_id', 'week')) |> 
   mutate(epa_per_target = receiving_epa / targets_pbp,
          targets_diff = targets_pbp - targets, 
-         receptions_diff = receptions_pbp - receptions) |> 
+         receptions_diff = receptions_pbp - receptions,
+         epa_diff = total_epa - receiving_epa) |> 
   
   select(-player_name, -receiving_fumbles, -receiving_fumbles_lost, -receiving_first_downs, 
          -receiving_2pt_conversions, -racr, -receiver_player_name, -receiving_air_yards,
@@ -98,11 +94,6 @@ recv_df <- pbp_w_charting |>
   select(receiver_player_id, player_display_name, position, headshot_url, posteam, week, 
          targets_pbp, targets, targets_diff, receptions_pbp, receptions, receptions_diff,
          drops, everything())
-
-# Step: QC the targets and receptions difference
-
-recv_df |> 
-  summarize(sum(targets_diff), sum(receptions_diff))
 
 
 

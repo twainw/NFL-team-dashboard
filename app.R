@@ -327,7 +327,7 @@ server <- function(input, output) {
       ) |>
       tab_footnote(
         footnote = paste0("Subscripted Number: Rank in that category from Weeks ", 
-                          input$week_input[1], "-", input$week_input[2]),
+                          week_input[1], "-", week_input[2]),
         locations = cells_column_labels(columns = "season")
       ) |> 
       gt_theme_538() |> 
@@ -363,6 +363,7 @@ server <- function(input, output) {
                 catchable_contested = sum(catchable_contested), 
                 catchable_not_contested = sum(catchable_not_contested),
                 not_catchable = sum(not_catchable),
+                not_catchable_rate = sum(not_catchable) / sum(targets),
                 created_receptions = sum(created_receptions),
                 drops = sum(drops),
                 total_epa = sum(receiving_epa)
@@ -372,6 +373,7 @@ server <- function(input, output) {
       arrange(-targets) |> 
       gt() |> 
       fmt_number(columns = c("total_epa", "epa_per_target"), decimals = 2) |> 
+      fmt_percent(columns = c("not_catchable_rate"), decimals = 1) |> 
       gt_img_rows(headshot_url, height = 35) |> 
       cols_label(
         headshot_url = "",
@@ -382,6 +384,7 @@ server <- function(input, output) {
         catchable_contested = md("Catchable<br> but Contested"),
         catchable_not_contested = md("Catchable<br> Not Contested"),
         not_catchable = md("Not<br>Catchable"),
+        not_catchable_rate = md("Not<br>Catchable %"),
         created_receptions = md("Created<br>Receptions"),
         drops = "Drops",
         total_epa = md("Total<br>EPA"),

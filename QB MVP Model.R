@@ -27,15 +27,8 @@ player_stats <- nflreadr::load_player_stats(2000:season_yr) %>%
     total_interceptions = sum(interceptions, na.rm = TRUE),
     mean_epa = mean(passing_epa, na.rm = TRUE)) %>%
   ungroup() |> 
-  filter(season >= 2003)
-
-player_stats_pre_2023 <- player_stats |> 
+  filter(season >= 2003) |> 
   filter(total_attempts >= 150)
-
-player_stats_2023 <- player_stats |> 
-  filter(season == 2023)
-
-player_stats <- rbind(player_stats_pre_2023, player_stats_2023)
 
 #--------------------------
 # Standings
@@ -197,7 +190,7 @@ cols_needed <- c("player_display_name", "mvp_prob", "pred_mvp",
 
 # Step: Create gt() table function
 
-get_gt_table <- function(df, year, num_rows = 5) {
+get_gt_table <- function(df, year, num_rows = 10) {
   
   df %>% 
     filter(season == year) %>% 
@@ -241,7 +234,7 @@ get_gt_table <- function(df, year, num_rows = 5) {
     gtExtras::gt_theme_538()
 }
 
-get_gt_table(df_test, season_yr)
+get_gt_table(df_test, season_yr, num_rows = 10)
 
 coeffs <- m |> 
   tbl_regression() |> 

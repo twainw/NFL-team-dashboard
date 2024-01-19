@@ -21,7 +21,9 @@ teams <- load_teams() |> filter(!team_abbr %in% c("LAR", "OAK", "STL", "SD"))
 
 # Step: Load play-by-play
 
-pbp <- load_participation(seasons = season_yr, include_pbp = T)
+pbp <- load_pbp(seasons = season_yr) |> 
+  inner_join(charting |> select(nflverse_game_id, nflverse_play_id, is_no_huddle:last_col()), 
+             by = c("game_id" = "nflverse_game_id", "play_id" = "nflverse_play_id"))
 
 # Step: Load Schedules
 
